@@ -38,6 +38,18 @@ module.exports = (robot) ->
     else
       message.send('Mopidy is offline')
 
+  robot.respond /volume\?/i, (message) ->
+    if online
+      printCurrentVolume = (volume) ->
+        if volume
+          message.send("The Current volume is #{volume}")
+        else
+          message.send("Sorry, can't grab current volume")
+    else
+      message.send('Mopidy is offline')
+    mopidy.playback.getVolume().then printCurrentVolume, console.error.bind(console)
+
+
   robot.respond /what'?s playing/i, (message) ->
     if online
       printCurrentTrack = (track) ->
@@ -72,5 +84,33 @@ module.exports = (robot) ->
     if online
       mopidy.playback.setMute(false)
       message.send('Playback unmuted')
+    else
+      message.send('Mopidy is offline')
+
+  robot.respond /pause music/i, (message) ->
+    if online
+      mopidy.playback.pause()
+      message.send('Music paused')
+    else
+      message.send('Mopidy is offline')
+
+  robot.respond /resume music/i, (message) ->
+    if online
+      mopidy.playback.resume()
+      message.send('Music resumed')
+    else
+      message.send('Mopidy is offline')
+
+  robot.respond /shuffle music/i, (message) ->
+    if online
+      mopidy.tracklist.setRandom(true)
+      message.send('Now shuffling')
+    else
+      message.send('Mopidy is offline')
+
+  robot.respond /stop shuffle/i, (message) ->
+    if online
+      mopidy.tracklist.setRandom(false)
+      message.send('Shuffling has been stopped')
     else
       message.send('Mopidy is offline')
