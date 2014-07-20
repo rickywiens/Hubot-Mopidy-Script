@@ -6,6 +6,7 @@
 #
 # Configuration:
 #  HUBOT_MOPIDY_WEBSOCKETURL (eg. ws://localhost:8282/mopidy/ws/)
+#  (For now just change the webSocketUrl to your mopidy location)
 #
 #
 # Commands:
