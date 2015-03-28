@@ -10,8 +10,18 @@
 #
 #
 # Commands:
-#
-#
+#   hubot set volume <digit> - Sets the volume to <digit>
+#   hubot volume? - Outputs what the volume currently is
+#   hubot what's playing - Outputs the currently playing track
+#   hubot next track - Skips to the next track
+#   hubot mute - Mutes the volume
+#   hubot unmute - Unmutes the volume
+#   hubot pause music - Pauses the music
+#   hubot resume music - Resumes the music
+#   hubot shuffle music - Turns shuffle on the playlist
+#   hubot stop shuffle - Shuts shuffle off
+#   hubot search music <searchTerm> - Searches all the mopidy backends for <searchTerm>
+#   hubot queue <digit> - Queues the track of YOUR last search
 #
 # Notes:
 #   None
@@ -19,11 +29,13 @@
 # Author:
 #   eriley
 
+Mopidy = require("mopidy")
 
+mopidy = new Mopidy(
+  webSocketUrl: 'ws://192.168.141.88:6680/mopidy/ws/',
+  callingConvention: 'by-position-or-by-name'
+)
 
-Mopidy = require("mopidy").Mopidy
-
-mopidy = new Mopidy(webSocketUrl: 'ws://localhost:8282/mopidy/ws/')
 online = false
 mopidy.on 'state:online', ->
   online = true
@@ -34,7 +46,7 @@ module.exports = (robot) ->
   robot.respond /set volume (\d+)/i, (message) ->
     newVolume = parseInt(message.match[1])
     if online
-      mopidy.playback.setVolume(newVolume)
+      mopidy.playback.setVolume(volume: newVolume)
       message.send("Set volume to #{newVolume}")
     else
       message.send('Mopidy is offline')
@@ -76,14 +88,14 @@ module.exports = (robot) ->
 
   robot.respond /mute/i, (message) ->
     if online
-      mopidy.playback.setMute(true)
+      mopidy.playback.setMute(mute: true)
       message.send('Playback muted')
     else
       message.send('Mopidy is offline')
 
   robot.respond /unmute/i, (message) ->
     if online
-      mopidy.playback.setMute(false)
+      mopidy.playback.setMute(mute: false)
       message.send('Playback unmuted')
     else
       message.send('Mopidy is offline')
@@ -104,14 +116,42 @@ module.exports = (robot) ->
 
   robot.respond /shuffle music/i, (message) ->
     if online
-      mopidy.tracklist.setRandom(true)
+      mopidy.tracklist.setRandom(value: true)
       message.send('Now shuffling')
     else
       message.send('Mopidy is offline')
 
   robot.respond /stop shuffle/i, (message) ->
     if online
-      mopidy.tracklist.setRandom(false)
+      mopidy.tracklist.setRandom(value: false)
       message.send('Shuffling has been stopped')
     else
       message.send('Mopidy is offline')
+
+  robot.respond /search music (.*)/i, (message) ->
+    searchTerm = message.match[1]
+    if online
+      trackNum = 0
+      tracks = []
+      mopidy.library.search(any: searchTerm).then (results) ->
+        trackList = ''
+        for result in results
+          if result.tracks
+            for track in result.tracks
+              if track.name
+                tracks.push track
+                trackNum++
+                trackList += trackNum + ': ' + track.name + "\n"
+        if trackNum == 0
+          trackList = "Could not find any results for " + searchTerm
+        else
+          robot.brain.set message.message.user.name + "_musicsearch", tracks
+        message.send(trackList)
+    else
+      message.send('Mopidy is offline')
+
+  robot.respond /queue ([0-9]+)/i, (message) ->
+    trackNumber = parseInt(message.match[1]) - 1
+    tracks = robot.brain.get message.message.user.name + "_musicsearch"
+    if mopidy.tracklist.add(tracks: [tracks[trackNumber]])
+      message.send('Queued up: ' + tracks[trackNumber].name)
